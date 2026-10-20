@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jeno's iPhone - Jaemjen Simulator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; user-select: none; }
+    body { background: #0b0c0e; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; overflow: hidden; }
+
+    /* Frame iPhone 16 Pro */
+    .iphone-container {
+      width: 380px;
+      height: 780px;
+      background: #000;
+      border-radius: 50px;
+      border: 10px solid #2a2b2e;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), inset 0 0 4px rgba(255,255,255,0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Dynamic Island */
+    .dynamic-island {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110px;
+      height: 28px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .dynamic-island.active { width: 340px; height: 60px; border-radius: 30px; background: rgba(20,20,20,0.95); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.15); }
+    .island-content { display: none; width: 100%; align-items: center; justify-content: space-between; font-size: 12px; }
+    .dynamic-island.active .island-content { display: flex; }
+
+    /* Status Bar */
+    .status-bar {
+      position: absolute;
+      top: 14px;
+      width: 100%;
+      padding: 0 26px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 998;
+      pointer-events: none;
+    }
+
+    /* Screen System */
+    .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* Lockscreen */
+    #lock-screen {
+      background: linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.4)), url('LOCKSCREEN.jpeg') center/cover no-repeat;
+      justify-content: space-between;
+      padding: 60px 20px 40px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .clock-large { font-size: 68px; font-weight: 200; letter-spacing: -1.5px; }
+    .date-text { font-size: 16px; font-weight: 500; opacity: 0.9; }
+
+    .lock-noti {
+      background: rgba(255,255,255,0.22);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 12px 16px;
+      text-align: left;
+      margin-top: 20px;
+      font-size: 13px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* Homescreen */
+    #home-screen {
+      background: url('homescreen.jpeg') center/cover no-repeat;
+      padding: 65px 20px 35px;
+    }
+    .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: auto; }
+    .app-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+    .app-icon {
+      width: 58px; height: 58px; border-radius: 15px; display: flex; align-items: center; justify-content: center;
+      font-size: 26px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: #222; transition: transform 0.15s;
+    }
+    .app-item:active .app-icon { transform: scale(0.92); }
+    .app-label { font-size: 11px; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+    /* KakaoTalk UI */
+    .kakaotalk-bg { background: #abc0d0; color: #000; }
+    .chat-header { background: #a0b4c4; padding: 42px 16px 12px; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+    .chat-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: url('wallpaper WA.jpeg') center/cover no-repeat; }
+    .msg { max-width: 75%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; word-wrap: break-word; animation: fadeIn 0.25s ease; }
+    .msg.received { background: #fff; align-self: flex-start; border-top-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .msg.sent { background: #ffe812; align-self: flex-end; border-top-right-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .typing-indicator { font-size: 11px; color: #555; font-style: italic; align-self: flex-start; background: rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 8px; }
+
+    .chat-input-bar { background: #fff; padding: 10px 12px 24px; display: flex; gap: 8px; align-items: center; }
+    .chat-input-bar input { flex: 1; border: 1px solid #ddd; border-radius: 18px; padding: 8px 14px; outline: none; font-size: 13px; }
+    .send-btn { border: none; background: #ffe812; padding: 8px 14px; border-radius: 16px; cursor: pointer; font-weight: bold; font-size: 12px; color: #3c1e1e; }
+
+    /* Chat List */
+    .chat-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #eee; cursor: pointer; }
+    .avatar-circle { width: 46px; height: 46px; border-radius: 18px; object-fit: cover; }
+
+    /* Instagram UI */
+    .insta-header { background: #000; border-bottom: 1px solid #222; padding: 42px 16px 10px; display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; }
+    .insta-profile { padding: 16px; display: flex; gap: 20px; align-items: center; }
+    .insta-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #333; }
+    .insta-stats { display: flex; gap: 20px; text-align: center; flex: 1; }
+    .insta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: #111; margin-top: 10px; overflow-y: auto; flex: 1; }
+    .insta-grid img { width: 100%; height: 115px; object-fit: cover; }
+
+    /* Phone Call UI */
+    #phone-call-screen {
+      background: linear-gradient(180deg, #1c1c1e 0%, #000 100%);
+      padding: 55px 20px 30px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .caller-avatar { width: 95px; height: 95px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.2); margin-bottom: 8px; }
+    .caller-avatar.pulse { animation: ringPulse 1.2s infinite ease-in-out; }
+    .caller-name { font-size: 22px; font-weight: 600; }
+    .call-status { font-size: 13px; color: #8e8e93; margin-top: 4px; }
+    
+    .dialog-box {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(20px);
+      border-radius: 18px;
+      padding: 16px;
+      width: 100%;
+      text-align: center;
+      font-size: 13.5px;
+      line-height: 1.5;
+      border: 1px solid rgba(255,255,255,0.15);
+      margin: 10px 0;
+      min-height: 85px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .choice-container { width: 100%; display: flex; flex-direction: column; gap: 8px; min-height: 100px; }
+    .choice-btn {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .choice-btn:active { background: rgba(255,255,255,0.35); }
+
+    .call-controls { display: flex; gap: 50px; margin-bottom: 10px; }
+    .call-action {
+      width: 62px; height: 62px; border-radius: 50%; border: none;
+      color: #fff; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .decline { background: #ff3b30; }
+    .accept { background: #34c759; }
+
+    /* App Header Standard */
+    .app-header { padding: 42px 16px 12px; background: #1c1c1e; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2c2c2e; font-weight: 600; }
+    
+    /* Gallery */
+    .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 4px; overflow-y: auto; flex: 1; }
+    .gallery-grid img { width: 100%; height: 110px; object-fit: cover; }
+
+    /* Home Indicator */
+    .home-indicator {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 130px;
+      height: 4px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 2px;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes ringPulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }
+  </style>
+</head>
+<body>
+
+<div class="iphone-container">
+  <!-- Dynamic Island -->
+  <div class="dynamic-island" id="dynamicIsland">
+    <div class="island-content" id="islandContent">
+      <span style="display:flex; align-items:center; gap:6px;">
+        <span style="color:#ff3b30; animation: pulse 1s infinite;">📞</span> <b>Kak Jaemin</b>
+      </span>
+      <span style="font-size:10px; opacity:0.8;">Memanggil...</span>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span>22:15</span>
+    <span>5G 💬 88%</span>
+  </div>
+
+  <!-- Lockscreen -->
+  <div class="screen active" id="lock-screen" onclick="unlockPhone()">
+    <div>
+      <div class="date-text">Selasa, 20 Oktober</div>
+      <div class="clock-large">22:15</div>
+      <div class="lock-noti">
+        <b>KakaoTalk • Kak Jaemin</b>
+        <p style="opacity:0.9; margin-top:2px;">Revisi bab 3 kamu mana? Katanya mau dikirim jam 9?</p>
+      </div>
+    </div>
+    <div style="font-size: 12px; opacity: 0.8; margin-bottom: 10px;">Ketuk layar untuk membuka</div>
+  </div>
+
+  <!-- Homescreen -->
+  <div class="screen" id="home-screen">
+    <div class="app-grid">
+      <div class="app-item" onclick="openScreen('kakaotalk-list-screen')">
+        <div class="app-icon" style="background: #ffe812; color: #3c1e1e;">💬</div>
+        <div class="app-label">KakaoTalk</div>
+      </div>
+      <div class="app-item" onclick="openScreen('instagram-screen')">
+        <div class="app-icon" style="background: linear-gradient(45deg, #f09433, #bc1888);">📸</div>
+        <div class="app-label">Instagram</div>
+      </div>
+      <div class="app-item" onclick="triggerIncomingCall()">
+        <div class="app-icon" style="background: #34c759;">📞</div>
+        <div class="app-label">Telepon</div>
+      </div>
+      <div class="app-item" onclick="openScreen('gallery-screen')">
+        <div class="app-icon" style="background: #fff;">🖼️</div>
+        <div class="app-label">Galeri</div>
+      </div>
+      <div class="app-item" onclick="openScreen('email-screen')">
+        <div class="app-icon" style="background: #007aff;">✉️</div>
+        <div class="app-label">Email</div>
+      </div>
+      <div class="app-item" onclick="openScreen('calendar-screen')">
+        <div class="app-icon" style="background: #ff3b30;">📅</div>
+        <div class="app-label">Kalender</div>
+      </div>
+      <div class="app-item" onclick="openScreen('maps-screen')">
+        <div class="app-icon" style="background: #30d158;">🗺️</div>
+        <div class="app-label">Maps</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KakaoTalk List Screen -->
+  <div class="screen" id="kakaotalk-list-screen" style="background:#fff; color:#000;">
+    <div class="chat-header" style="background:#f8f8f8; color:#000;">
+      <span onclick="openScreen('home-screen')" style="cursor:pointer;">❮ Home</span>
+      <span style="margin-left:auto;">KakaoTalk</span>
+    </div>
+    <div style="flex:1; overflow-y:auto;">
+      <div class="chat-list-item" onclick="openChat('jaemin')">
+        <img src="Jaemin NCT.jpeg" class="avatar-circle">
+        <div>
+          <b>Kak Jaemin (Kating)</b>
+          <p style="font-size:12px; color:#666;">Jeno, revisi bab 3 kamu mana?</p>
+        </div>
+      </div>
+      <div class="chat-list-item" onclick="openChat('friends')">
+        <img src="renjun.jpeg" class="avatar-circle">
+        <div>
+          <b>Renjun & Haechan</b>
+          <p style="font-size:12px; color:#666;">Haechan: Woi Jen, kating galak nyariin tuh...</p>
+        </div>
+      </div>
+      <div class="chat-list-item" onclick="openChat('mark')">
+        <img src="mark.jpeg" class="avatar-circle">
+        <div>
+          <b>Bang Mark</b>
+          <p style="font-size:12px; color:#666;">Jangan lupa pulang sebelum jam 10 malam ya.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KakaoTalk Individual Chat Screen -->
+  <div class="screen kakaotalk-bg" id="kakaotalk-chat-screen">
+    <div class="chat-header">
+      <span onclick="openScreen('kakaotalk-list-screen')" style="cursor:pointer;">❮</span>
+      <div>
+        <div id="chatTitle">Kak Jaemin</div>
+        <div style="font-size: 10px; opacity: 0.7; font-weight: normal;" id="chatSub">Arsitektur '24</div>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-input-bar">
+      <input type="text" id="chatInput" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter') sendKakaoMsg()">
+      <button class="send-btn" onclick="sendKakaoMsg()">Kirim</button>
+    </div>
+  </div>
+
+  <!-- Instagram Screen -->
+  <div class="screen" id="instagram-screen" style="background:#000;">
+    <div class="insta-header">
+      <span onclick="openScreen('home-screen')" style="cursor:pointer;">❮</span>
+      <span>leejen_0_423</span>
+      <span>⚙️</span>
+    </div>
+    <div class="insta-profile">
+      <img src="jeno photo profil WA.jpeg" class="insta-avatar">
+      <div class="insta-stats">
+        <div><b>6</b><br><span style="font-size:11px; color:#aaa;">Posts</span></div>
+        <div><b>423K</b><br><span style="font-size:11px; color:#aaa;">Followers</span></div>
+        <div><b>120</b><br><span style="font-size:11px; color:#aaa;">Following</span></div>
+      </div>
+    </div>
+    <div style="padding:0 16px 12px; font-size:13px;">
+      <b>Jeno Lee</b><br>
+      Architecture Student '25 📐
+    </div>
+    <div class="insta-grid">
+      <img src="jeno 1.jpeg">
+      <img src="jeno 2.jpeg">
+      <img src="jeno 3.jpeg">
+      <img src="jeno 4.jpeg">
+      <img src="jeno 5.jpeg">
+      <img src="jeno FEEDS INSTAGRAM.jpeg">
+    </div>
+  </div>
+
+  <!-- Phone Call Screen -->
+  <div class="screen" id="phone-call-screen">
+    <div style="text-align:center;">
+      <img src="Jaemin NCT.jpeg" class="caller-avatar" id="callerAvatar">
+      <div class="caller-name">Kak Jaemin</div>
+      <div class="call-status" id="callStatus">Panggilan Masuk...</div>
+    </div>
+
+    <div class="dialog-box">
+      <p id="jaeminSpeech"></p>
+    </div>
+
+    <div class="choice-container" id="choiceContainer"></div>
+
+    <div class="call-controls">
+      <button class="call-action decline" onclick="endCall()">Tolak</button>
+      <button class="call-action accept" id="acceptBtn" onclick="acceptCall()">Angkat</button>
+    </div>
+  </div>
+
+  <!-- Gallery Screen -->
+  <div class="screen" id="gallery-screen" style="background:#000;">
+    <div class="app-header">
+      <span onclick="openScreen('home-screen')" style="cursor:pointer;">❮</span>
+      <span>Galeri Foto Jeno</span>
+    </div>
+    <div class="gallery-grid">
+      <img src="jeno 1.jpeg">
+      <img src="jeno 2.jpeg">
+      <img src="jeno 3.jpeg">
+      <img src="jeno 4.jpeg">
+      <img src="jeno 5.jpeg">
+      <img src="jeno FEEDS INSTAGRAM.jpeg">
+      <img src="jeno photo profil WA.jpeg">
+      <img src="Jaemin NCT.jpeg">
+    </div>
+  </div>
+
+  <!-- Email Screen -->
+  <div class="screen" id="email-screen" style="background:#1c1c1e;">
+    <div class="app-header">
+      <span onclick="openScreen('home-screen')" style="cursor:pointer;">❮</span>
+      <span>Email Kampus</span>
+    </div>
+    <div style="padding:16px; font-size:13px; display:flex; flex-direction:column; gap:12px;">
+      <div style="background:#2c2c2e; padding:12px; border-radius:12px;">
+        <b>Revisi Laporan - Na Jaemin (Kating)</b>
+        <p style="color:#aaa; font-size:11px; margin-top:4px;">Jeno, perbaiki denah struktur lantai 2 di CAD kamu...</p>
+      </div>
+      <div style="background:#2c2c2e; padding:12px; border-radius:12px;">
+        <b>Pengumuman Lab Arsitektur</b>
+        <p style="color:#aaa; font-size:11px; margin-top:4px;">Jadwal asistensi kelompok 4 dimajukan besok pagi.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar Screen -->
+  <div class="screen" id="calendar-screen" style="background:#1c1c1e;">
+    <div class="app-header">
+      <span onclick="openScreen('home-screen')" style="cursor:pointer;">❮</span>
+      <span>Jadwal & Skejul Jeno</span>
+    </div>
+    <div style="padding:16px; font-size:13px; display:flex; flex-direction:column; gap:12px;">
+      <div style="background:#2c2c2e; padding:12px; border-radius:12px; border-left:4px solid #34c759;">
+        <b>09:00 - Kuliah Studio Arsitektur</b>
+        <p style="color:#aaa; font-size:11px;">Gedung Utama R.302</p>
+      </div>
+      <div style="background:#2c2c2e; padding:12px; border-radius:12px; border-left:4px solid #ff9500;">
+        <b>13:00 - Asistensi Laporan bareng Kak Jaemin</b>
+        <p style="color:#aaa; font-size:11px;">Lab Gambar Lantai 2</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maps Screen -->
+  <div class="screen" id="maps-screen" style="background:#1c1c1e;">
+    <div class="app-header">
+      <span onclick="openScreen('home-screen')" style="cursor:pointer;">❮</span>
+      <span>Peta Kampus</span>
+    </div>
+    <div style="padding:20px; text-align:center; color:#aaa; font-size:13px;">
+      📍 <b>Lokasi Saat Ini:</b> Fakultas Teknik Arsitektur<br><br>
+      • Lab Gambar (Tempat Kak Jaemin)<br>
+      • Kantin Utama (Spot Haechan & Renjun)<br>
+      • Perpustakaan Pusat
+    </div>
+  </div>
+
+  <!-- Home Indicator -->
+  <div class="home-indicator" onclick="openScreen('home-screen')"></div>
+</div>
+
+<script>
+  let activeChatPerson = 'jaemin';
+  let ringtoneInterval = null;
+  let audioCtx = null;
+
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  function playMarimbaBeep() {
+    if (!audioCtx) return;
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.12);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.12 + 0.25);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + idx * 0.12);
+      osc.stop(audioCtx.currentTime + idx * 0.12 + 0.25);
+    });
+  }
+
+  function startRingtoneSound() {
+    initAudio();
+    playMarimbaBeep();
+    ringtoneInterval = setInterval(playMarimbaBeep, 2000);
+  }
+
+  function stopRingtoneSound() {
+    if (ringtoneInterval) {
+      clearInterval(ringtoneInterval);
+      ringtoneInterval = null;
+    }
+  }
+
+  function playClick() {
+    initAudio();
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.05);
+  }
+
+  const chatData = {
+    jaemin: {
+      title: "Kak Jaemin (Kating)",
+      sub: "Arsitektur '24",
+      messages: [
+        { sender: 'received', text: 'Jeno, revisi bab 3 kamu mana? Katanya mau dikirim jam 9?' },
+        { sender: 'received', text: 'Jangan tunda terus, besok sudah harus diserahkan ke Dosen Pembimbing.' }
+      ]
+    },
+    friends: {
+      title: "Renjun & Haechan",
+      sub: "Grup Sahabat",
+      messages: [
+        { sender: 'received', text: 'Haechan: Woi Jen, kating galak nyariin tuh di lab.' },
+        { sender: 'received', text: 'Renjun: Lu belum kelar revisi juga? Mampus dah kena semprot Jaemin WKWK' }
+      ]
+    },
+    mark: {
+      title: "Bang Mark",
+      sub: "Kakak",
+      messages: [
+        { sender: 'received', text: 'Jen, ntar malam pulang jam berapa?' },
+        { sender: 'received', text: 'Jangan kemalaman ya, mama nanyain.' }
+      ]
+    }
+  };
+
+  const dialogTree = {
+    start: {
+      text: '"Jeno, kamu di mana? Laporan asistensi kok belum dikumpul ke lab?"',
+      options: [
+        { text: '"Maaf kak, ini baru mau dikirim lewat email."', next: 'pathA' },
+        { text: '"Lagi di kantin kak, sebentar lagi aku ke lab."', next: 'pathB' }
+      ]
+    },
+    pathA: {
+      text: '"Lain kali jangan mepet deadline. Cepetan kirim, aku tungguin di lab sekarang."',
+      options: [
+        { text: '"Siap kak, makasih udah diingetin."', next: 'endGood' },
+        { text: '"Kak Jaemin nungguin aku ya?"', next: 'pathFlustered' }
+      ]
+    },
+    pathB: {
+      text: '"Kantin terus. Jangan lupa makan yang bener, awas kalau maag kamu kumat lagi! Abis itu langsung ke lab."',
+      options: [
+        { text: '"Iya kak Jaemin, aku langsung ke sana."', next: 'endGood' }
+      ]
+    },
+    pathFlustered: {
+      text: '"...Gak usah keperdeaan! Cepat ke sini aja, jangan banyak alasan!"',
+      options: [
+        { text: '"Iya kak, aku jalan sekarang."', next: 'endGood' }
+      ]
+    },
+    endGood: {
+      text: '"Yaudah. Hati-hati di jalan."',
+      options: []
+    }
+  };
+
+  function unlockPhone() {
+    playClick();
+    openScreen('home-screen');
+  }
+
+  function openScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  function openChat(person) {
+    activeChatPerson = person;
+    const data = chatData[person];
+    document.getElementById('chatTitle').innerText = data.title;
+    document.getElementById('chatSub').innerText = data.sub;
+
+    const body = document.getElementById('chatBody');
+    body.innerHTML = '';
+    data.messages.forEach(m => {
+      const div = document.createElement('div');
+      div.className = `msg ${m.sender}`;
+      div.innerText = m.text;
+      body.appendChild(div);
+    });
+
+    openScreen('kakaotalk-chat-screen');
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function sendKakaoMsg() {
+    const input = document.getElementById('chatInput');
+    const body = document.getElementById('chatBody');
+    if (!input.value.trim()) return;
+
+    playClick();
+    const txt = input.value;
+    input.value = '';
+
+    chatData[activeChatPerson].messages.push({ sender: 'sent', text: txt });
+
+    const sentDiv = document.createElement('div');
+    sentDiv.className = 'msg sent';
+    sentDiv.innerText = txt;
+    body.appendChild(sentDiv);
+    body.scrollTop = body.scrollHeight;
+
+    if (activeChatPerson === 'jaemin') {
+      const typingIndicator = document.createElement('div');
+      typingIndicator.className = 'typing-indicator';
+      typingIndicator.innerText = 'Kak Jaemin sedang mengetik...';
+      body.appendChild(typingIndicator);
+      body.scrollTop = body.scrollHeight;
+
+      setTimeout(() => {
+        typingIndicator.remove();
+        const replyText = "Yaudah, buruan kirim. Aku tunggu di lab. Jangan lupa minum air, kamu sering lupa.";
+        chatData.jaemin.messages.push({ sender: 'received', text: replyText });
+
+        const replyDiv = document.createElement('div');
+        replyDiv.className = 'msg received';
+        body.appendChild(replyDiv);
+
+        typeWriterEffect(replyDiv, replyText, 30, () => {
+          body.scrollTop = body.scrollHeight;
+        });
+      }, 1500);
+    }
+  }
+
+  function typeWriterEffect(element, text, speed = 30, callback = null) {
+    element.innerText = '';
+    let i = 0;
+    function type() {
+      if (i < text.length) {
+        element.innerText += text.charAt(i);
+        i++;
+        setTimeout(type, speed);
+      } else if (callback) {
+        callback();
+      }
+    }
+    type();
+  }
+
+  function triggerIncomingCall() {
+    openScreen('phone-call-screen');
+    startRingtoneSound();
+    document.getElementById('callerAvatar').classList.add('pulse');
+    document.getElementById('callStatus').innerText = 'Panggilan Masuk...';
+    document.getElementById('acceptBtn').style.display = 'flex';
+    document.getElementById('jaeminSpeech').innerText = '';
+    document.getElementById('choiceContainer').innerHTML = '';
+
+    const island = document.getElementById('dynamicIsland');
+    island.classList.add('active');
+  }
+
+  function acceptCall() {
+    stopRingtoneSound();
+    playClick();
+    document.getElementById('callerAvatar').classList.remove('pulse');
+    document.getElementById('callStatus').innerText = '00:08';
+    document.getElementById('acceptBtn').style.display = 'none';
+    renderDialog('start');
+  }
+
+  function renderDialog(key) {
+    const node = dialogTree[key];
+    const speechEl = document.getElementById('jaeminSpeech');
+    const container = document.getElementById('choiceContainer');
+    container.innerHTML = '';
+
+    typeWriterEffect(speechEl, node.text, 25, () => {
+      if (node.options.length === 0) {
+        const endBtn = document.createElement('button');
+        endBtn.className = 'choice-btn';
+        endBtn.innerText = 'Tutup Panggilan';
+        endBtn.style.textAlign = 'center';
+        endBtn.onclick = () => { playClick(); endCall(); };
+        container.appendChild(endBtn);
+      } else {
+        node.options.forEach(opt => {
+          const btn = document.createElement('button');
+          btn.className = 'choice-btn';
+          btn.innerText = opt.text;
+          btn.onclick = () => { playClick(); renderDialog(opt.next); };
+          container.appendChild(btn);
+        });
+      }
+    });
+  }
+
+  function endCall() {
+    stopRingtoneSound();
+    playClick();
+    openScreen('home-screen');
+    document.getElementById('callerAvatar').classList.remove('pulse');
+    document.getElementById('acceptBtn').style.display = 'flex';
+    document.getElementById('callStatus').innerText = 'Panggilan Masuk...';
+    document.getElementById('dynamicIsland').classList.remove('active');
+  }
+</script>
+
+</body>
+</html>
